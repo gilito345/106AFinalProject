@@ -1,0 +1,8 @@
+prefix=/home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/install
+
+Name: parking
+Description: Description of parking
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 
