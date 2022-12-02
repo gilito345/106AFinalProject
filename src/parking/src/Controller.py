@@ -2,6 +2,7 @@
 
 
 from nav_msgs.msg import Odometry
+import tf
 from geometry_msgs.msg import Twist
 import rospy
 import tf2_ros
@@ -11,14 +12,16 @@ from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Pose
 from std_msgs.msg import ColorRGBA
-marker = Marker()
 position = Pose()
+my_dict = {}
+yaw = 0
 
 def callback(data):
-	global marker
-	marker.points = data.points
-	marker.pose = data.pose
-	#print(data.points)
+	global my_dict
+	my_dict = {}
+	for blocks in range(2601):
+		my_dict[int(data.points[blocks].x * (51/20)) ,int( data.points[blocks].y * (51/20))] = data.colors[blocks].r
+
 
 	#print(data.pose)
 
@@ -27,7 +30,11 @@ def callback1(data):
 	
 def Position(odom):
 	global position
+	global yaw	
 	position = odom.pose.pose
+	(roll, pitch, yaw) = tf.transformations.euler_from_quaternion(
+            [position.orientation.x,position.orientation.y,
+             position.orientation.z, position.orientation.w])
 	#print(position.position.x, position.position.y, position.position.z)
 
 
@@ -41,6 +48,10 @@ def controller():
 	r = rospy.Rate(2)
 	control_command = Twist()
 	control_command.linear.x = .08
+	last_x, last_y = 0,0 
+	print("START")
+
+
 
 	while not rospy.is_shutdown():
 		try:
@@ -49,7 +60,30 @@ def controller():
 			print(position.position.x, position.position.y, position.position.z)
 			xcoor = int(position.position.x * (51/20))
 			ycoor = int(position.position.y * (51/20))
-			print(xcoor,ycoor)
+
+			###ROTATION###
+			print("ANGLE")
+			print(yaw)
+			if ((xcoor,ycoor) in my_dict and my_dict[xcoor,ycoor] >= .7 )or ( (xcoor,ycoor + 1) in my_dict  and my_dict[xcoor, ycoor + 1]>=.7):
+				print("DETECTED")
+				end_goal_yaw = yaw + 3.14
+
+				
+				while((yaw >= 0 and yaw <3.10) or (yaw < 0 and yaw > -3.10)):
+					if (rospy.is_shutdown()):
+						break
+					print(yaw)
+					control_command.linear.x = .00
+					control_command.angular.z = .12
+					pub.publish(control_command)
+					r.sleep()
+				break
+
+					
+			pub.publish(control_command)
+				
+					
+			
 			r.sleep()
 		
 
