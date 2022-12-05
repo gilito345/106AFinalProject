@@ -64,7 +64,7 @@ def controller():
 			###ROTATION###
 			print("ANGLE")
 			print(yaw)
-			if ((xcoor,ycoor) in my_dict and my_dict[xcoor,ycoor] >= .7 )or ( (xcoor,ycoor + 1) in my_dict  and my_dict[xcoor, ycoor + 1]>=.7):
+			if ((xcoor,ycoor) in my_dict and my_dict[xcoor,ycoor] >= .6 ) or ( (xcoor + 1,ycoor) in my_dict  and my_dict[xcoor + 1, ycoor]>=.6):
 				print("DETECTED")
 				end_goal_yaw = yaw + 3.14
 
