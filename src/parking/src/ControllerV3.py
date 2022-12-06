@@ -66,7 +66,10 @@ class ParkingController(object):
 				return -1, 0
 
 	def checkOccupied(self, xCoor, yCoor):
-		return (xCoor,yCoor) in self._my_dict and self._my_dict[xCoor,yCoor] >= .5
+		return (xCoor,yCoor) in self._my_dict and self._my_dict[xCoor,yCoor] >= .4
+
+	def checkNotOccupied(self, xCoor, yCoor):
+		return (xCoor,yCoor) in self._my_dict and self._my_dict[xCoor,yCoor] <= .2
 
 	def checkFrontOccupied(self, xCoor, yCoor):
 		dx, dy = self.getVelDir()
@@ -74,8 +77,20 @@ class ParkingController(object):
 		if dx == 0:
 			return self.checkOccupied(xCoor, yCoor + dy) 
 			#or self.checkOccupied(xCoor - 1, yCoor + dy) or self.checkOccupied(xCoor + 1, yCoor + dy)
-		else:
+		elif dy == 0:
 			return self.checkOccupied(xCoor + dx, yCoor) 
+			#or self.checkOccupied(xCoor + dx, yCoor - 1) or self.checkOccupied(xCoor + dx, yCoor + 1)
+		else: 
+			return self.checkOccupied(xCoor + dx, yCoor + dy) 
+
+	def checkHalfStepOccupied(self, xCoor, yCoor):
+		dx, dy = self.getVelDir()
+
+		if dx == 0:
+			return self.checkOccupied(xCoor, round(yCoor + 0.5*dy, 0)) 
+			#or self.checkOccupied(xCoor - 1, yCoor + dy) or self.checkOccupied(xCoor + 1, yCoor + dy)
+		else:
+			return self.checkOccupied(round(xCoor + 0.5*dx, 0), yCoor) 
 			#or self.checkOccupied(xCoor + dx, yCoor - 1) or self.checkOccupied(xCoor + dx, yCoor + 1)
 
 	def checkRightOccupied(self, xCoor, yCoor):
@@ -89,6 +104,18 @@ class ParkingController(object):
 			#or self.checkOccupied(xCoor + 1, yCoor + dx) or self.checkOccupied(xCoor - 1, yCoor + dx)
 
 
+
+	def checkRightNotOccupied(self, xCoor, yCoor):
+		dx, dy = self.getVelDir()
+
+		if dx == 0: #going up/down
+			return self.checkNotOccupied(xCoor + dy, yCoor) 
+			#or self.checkOccupied(xCoor + dy, yCoor + 1) or self.checkOccupied(xCoor + dy, yCoor - 1)
+		else: #going left/right
+			return self.checkNotOccupied(xCoor, yCoor + dx) 
+			#or self.checkOccupied(xCoor + 1, yCoor + dx) or self.checkOccupied(xCoor - 1, yCoor + dx)
+
+
 	def controller(self):
 		print("SEVEN")
 		pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
@@ -97,7 +124,10 @@ class ParkingController(object):
 		start_yaw = 0
 
 		rotating = False
-		
+		rightrotating = False
+		leftrotating = False
+		parking = False
+		foundspot = False
 		
 		print("START")
 
@@ -116,16 +146,49 @@ class ParkingController(object):
 					if error > 0.05:
 						if (rospy.is_shutdown()):
 							break
-						print(yaw)
+						#print(yaw)
 
 						control_command.angular.z = self.K * error
 
 					else:
 						rotating = False
 
+				elif rightrotating:
+					error = abs(abs((start_yaw - yaw)) - 0.5*math.pi)
+					if error > 0.05:
+						if (rospy.is_shutdown()):
+							break
+						#print(yaw)
+
+						control_command.angular.z = self.K * -error
+
+					else:
+						rightrotating = False
+
+				elif leftrotating:
+					error = abs(abs((start_yaw - yaw)) - 0.5*math.pi)
+					if error > 0.05:
+						if (rospy.is_shutdown()):
+							break
+						#print(yaw)
+
+						control_command.angular.z = self.K * error
+
+					else:
+						leftrotating = False
+						print("PARKING DONE")
+						break
+
+
 				else: 
 
-					control_command.linear.x = .08
+
+					if (foundspot == False):
+						control_command.linear.x = .07
+					elif (parking == True): 
+						control_command.linear.x = 0.0
+					else:
+						control_command.linear.x = .02
 					
 					print("moving")	
 					#print(position.position.x, position.position.y, position.position.z)
@@ -134,7 +197,12 @@ class ParkingController(object):
 					xcoor = int(sensor_x * (51/20))
 					ycoor = int(sensor_y * (51/20))
 
-					if self.checkRightOccupied(xcoor, ycoor):
+					if  (self.checkRightNotOccupied(xcoor, ycoor)) and (foundspot == False):
+						print("found spot!")
+						start_yaw = yaw
+						rightrotating = True
+						foundspot = True
+					elif (foundspot == False):
 						print("no spot!")
 
 					
@@ -142,7 +210,7 @@ class ParkingController(object):
 					
 					#print("ANGLE")
 					#print(yaw)
-					if (self.checkOccupied(xcoor, ycoor) or self.checkFrontOccupied(xcoor, ycoor)):
+					if (self.checkOccupied(xcoor, ycoor) or self.checkFrontOccupied(xcoor, ycoor)) and (foundspot == False):
 						print("DETECTED")
 						start_yaw = yaw
 
@@ -158,6 +226,12 @@ class ParkingController(object):
 						# 	pub.publish(control_command)
 						# 	r.sleep()
 						# break
+					elif (self.checkOccupied(xcoor, ycoor) or self.checkFrontOccupied(xcoor, ycoor)) and (foundspot == True):
+						print("PARKING")
+						control_command.linear.x = .0
+						start_yaw = yaw
+						parking = True
+						leftrotating = True
 
 					self._last_x = xcoor
 					self._last_y = ycoor
