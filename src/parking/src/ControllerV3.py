@@ -104,7 +104,6 @@ class ParkingController(object):
 			#or self.checkOccupied(xCoor + 1, yCoor + dx) or self.checkOccupied(xCoor - 1, yCoor + dx)
 
 
-
 	def checkRightNotOccupied(self, xCoor, yCoor):
 		dx, dy = self.getVelDir()
 
@@ -117,7 +116,7 @@ class ParkingController(object):
 
 
 	def controller(self):
-		print("SEVEN")
+		print("I AM A CAR")
 		pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
 		r = rospy.Rate(10)
@@ -126,6 +125,7 @@ class ParkingController(object):
 		rotating = False
 		rightrotating = False
 		leftrotating = False
+		signcheck = False
 
 		parking = False
 		foundspot = False
@@ -134,6 +134,8 @@ class ParkingController(object):
 		checkspot = False
 		checkingcount = 0
 		checkingsum = 0
+
+		freespot = False
 		
 		print("START")
 
@@ -170,6 +172,7 @@ class ParkingController(object):
 
 					else:
 						rightrotating = False
+						signcheck = True
 
 				elif leftrotating:
 					error = abs(abs((start_yaw - yaw)) - 0.5*math.pi)
@@ -182,20 +185,34 @@ class ParkingController(object):
 
 					else:
 						leftrotating = False
-						print("PARKING DONE")
-						break
+						if (freespot == True):
+							print("PARKING DONE")
+							break
 
+
+				elif signcheck:
+					print("checking sign")
+					freespot = True
+					signcheck = False
 
 				else: 
+
+					if (freespot == False) & (foundspot == True):
+						print("invalid spot")
+						print("continuing search")
+						foundspot = False
+						start_yaw = yaw
+						leftrotating = True
+
 
 
 					if (checkspot == True):
 						control_command.linear.x = .027
 					elif (foundspot == False):
 						control_command.linear.x = .07
-					elif (parking == True): 
+					elif (parking == True) or (freespot == False): 
 						control_command.linear.x = 0.0
-					else:
+					elif (freespot == True):
 						control_command.linear.x = .03
 						parkingcount += 1
 					
@@ -208,7 +225,7 @@ class ParkingController(object):
 
 					#print(checkingcount)
 					if (checkingcount == 78):
-						print("checking now")
+						print("checking spot")
 						print(checkingsum)
 
 					if  ((self.checkRightNotOccupied(xcoor, ycoor)) and (foundspot == False)) or  (checkingcount == 80):
@@ -258,9 +275,10 @@ class ParkingController(object):
 						# 	pub.publish(control_command)
 						# 	r.sleep()
 						# break
-					elif ((self.checkOccupied(xcoor, ycoor) or self.checkFrontOccupied(xcoor, ycoor)) or parkingcount==140) and (foundspot == True):
+					elif ((self.checkOccupied(xcoor, ycoor) or self.checkFrontOccupied(xcoor, ycoor)) or parkingcount==140) and (foundspot == True) and (freespot == True):
 						print("PARKING")
 						control_command.linear.x = .0
+						parkingcount = 0
 						start_yaw = yaw
 						parking = True
 						leftrotating = True
@@ -280,7 +298,7 @@ class ParkingController(object):
 			except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
 				pass
 
-		print("stop command")
+		print("stop command initiated")
 
 
 
