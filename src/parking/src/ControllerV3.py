@@ -126,8 +126,14 @@ class ParkingController(object):
 		rotating = False
 		rightrotating = False
 		leftrotating = False
+
 		parking = False
 		foundspot = False
+		parkingcount = 0
+		
+		checkspot = False
+		checkingcount = 0
+		checkingsum = 0
 		
 		print("START")
 
@@ -183,12 +189,15 @@ class ParkingController(object):
 				else: 
 
 
-					if (foundspot == False):
+					if (checkspot == True):
+						control_command.linear.x = .027
+					elif (foundspot == False):
 						control_command.linear.x = .07
 					elif (parking == True): 
 						control_command.linear.x = 0.0
 					else:
-						control_command.linear.x = .02
+						control_command.linear.x = .03
+						parkingcount += 1
 					
 					print("moving")	
 					#print(position.position.x, position.position.y, position.position.z)
@@ -197,15 +206,38 @@ class ParkingController(object):
 					xcoor = int(sensor_x * (51/20))
 					ycoor = int(sensor_y * (51/20))
 
-					if  (self.checkRightNotOccupied(xcoor, ycoor)) and (foundspot == False):
-						print("found spot!")
-						start_yaw = yaw
-						rightrotating = True
-						foundspot = True
-					elif (foundspot == False):
-						print("no spot!")
+					#print(checkingcount)
+					if (checkingcount == 78):
+						print("checking now")
+						print(checkingsum)
 
-					
+					if  ((self.checkRightNotOccupied(xcoor, ycoor)) and (foundspot == False)) or  (checkingcount == 80):
+						checkspot = True
+						if (checkingcount < 80):
+							checkingsum += float(self.checkRightNotOccupied(xcoor, ycoor))
+							checkingcount += 1
+						else:
+							if (checkingsum > 60):
+								print("found spot!")
+								checkingsum = 0
+								checkingcount = 0
+								start_yaw = yaw
+								checkspot = False
+								rightrotating = True
+								foundspot = True
+							else: 
+								print("no spot!")
+								checkingsum = 0
+								checkingcount = 0
+								checkspot = False
+					elif (foundspot == False):
+						if (checkingcount < 80):
+							checkingsum += float(self.checkRightNotOccupied(xcoor, ycoor))
+							checkingcount += 1
+						else:
+							checkingsum = 0
+							checkingcount = 0 
+							print("no spot!")
 
 					
 					#print("ANGLE")
@@ -226,7 +258,7 @@ class ParkingController(object):
 						# 	pub.publish(control_command)
 						# 	r.sleep()
 						# break
-					elif (self.checkOccupied(xcoor, ycoor) or self.checkFrontOccupied(xcoor, ycoor)) and (foundspot == True):
+					elif ((self.checkOccupied(xcoor, ycoor) or self.checkFrontOccupied(xcoor, ycoor)) or parkingcount==140) and (foundspot == True):
 						print("PARKING")
 						control_command.linear.x = .0
 						start_yaw = yaw
