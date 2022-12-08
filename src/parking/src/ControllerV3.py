@@ -57,19 +57,6 @@ class ParkingController(object):
 		self._my_image = data.data
 		print(sum(self._my_image)/len(self._my_image))
 
-	def threshold_segment_naive(gray_img, lower_thresh, upper_thresh):
-    	copy = gray_img.copy()
-    	row,col = np.shape(gray_img)
-   		for y in range(row):
-       		for x in range(col):
-            	if gray_img[y][x] < lower_thresh:
-                	copy[y][x] = 0
-            	elif gray_img[y][x] > upper_thresh:
-                	copy[y][x] = 0
-            	else:
-                	copy[y][x] = 1
-    	return copy
-
 	def getVelDir(self):
 		pose = self._tf_buffer.lookup_transform("odom", "base_link", rospy.Time())
 		dx = pose.transform.translation.x - self._last_x
