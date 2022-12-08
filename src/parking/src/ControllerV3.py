@@ -1,13 +1,15 @@
 #########
 
 import math
-from nav_msgs.msg import Odometry
-import tf
-from geometry_msgs.msg import Twist
+import numpy as np
 import rospy
 import tf2_ros
 import sys
+import tf
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import CompressedImage
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Pose
@@ -18,6 +20,7 @@ class ParkingController(object):
 		self._tf_buffer = tf2_ros.Buffer()
 		self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
 		self._my_dict = {}
+		self._my_image = {}
 		self._position = 0
 		self._last_x = 0
 		self._last_y = 0
@@ -42,12 +45,30 @@ class ParkingController(object):
 
 	def RegisterCallbacks(self):
 		self.occuGridListener = rospy.Subscriber("/vis/map", Marker, self.callback)
+		self.imageListener = rospy.Subscriber("/camera/image/compressed", CompressedImage, self.imagecallback)
 		return True
-
 
 	def callback(self, data):
 		for blocks in range(2601):
 			self._my_dict[int(data.points[blocks].x * (51/20)) ,int( data.points[blocks].y * (51/20))] = data.colors[blocks].r
+
+	def imagecallback(self, data):
+		#self._my_image = threshold_segment_naiva(data.data, 70, 200)
+		self._my_image = data.data
+		print(sum(self._my_image)/len(self._my_image))
+
+	def threshold_segment_naive(gray_img, lower_thresh, upper_thresh):
+    	copy = gray_img.copy()
+    	row,col = np.shape(gray_img)
+   		for y in range(row):
+       		for x in range(col):
+            	if gray_img[y][x] < lower_thresh:
+                	copy[y][x] = 0
+            	elif gray_img[y][x] > upper_thresh:
+                	copy[y][x] = 0
+            	else:
+                	copy[y][x] = 1
+    	return copy
 
 	def getVelDir(self):
 		pose = self._tf_buffer.lookup_transform("odom", "base_link", rospy.Time())
@@ -122,6 +143,9 @@ class ParkingController(object):
 		r = rospy.Rate(10)
 		start_yaw = 0
 
+		startcount = 0
+
+		startup = True
 		rotating = False
 		rightrotating = False
 		leftrotating = False
@@ -148,8 +172,14 @@ class ParkingController(object):
 				(roll, pitch, yaw) = tf.transformations.euler_from_quaternion(
             [pose.transform.rotation.x, pose.transform.rotation.y,
              pose.transform.rotation.z, pose.transform.rotation.w])
+				if startup:
+					control_command.linear.x = .03
+					startcount += 1
+					if (startcount == 120):
+						startup = False
+						print("startup done")
 
-				if rotating:
+				elif rotating:
 					error = abs(abs((start_yaw - yaw)) - math.pi)
 					if error > 0.05:
 						if (rospy.is_shutdown()):
@@ -204,10 +234,8 @@ class ParkingController(object):
 						start_yaw = yaw
 						leftrotating = True
 
-
-
 					if (checkspot == True):
-						control_command.linear.x = .027
+						control_command.linear.x = .026
 					elif (foundspot == False):
 						control_command.linear.x = .07
 					elif (parking == True) or (freespot == False): 
@@ -285,11 +313,8 @@ class ParkingController(object):
 
 					self._last_x = xcoor
 					self._last_y = ycoor
-
-						
-				pub.publish(control_command)
-					
-						
+	
+				pub.publish(control_command)	
 				
 				r.sleep()
 			
