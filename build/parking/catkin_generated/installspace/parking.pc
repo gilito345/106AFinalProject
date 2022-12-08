@@ -1,4 +1,4 @@
-prefix=/home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/install
+prefix=/home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/install
 
 Name: parking
 Description: Description of parking

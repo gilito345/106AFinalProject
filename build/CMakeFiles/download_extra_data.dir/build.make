@@ -43,10 +43,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/src
+CMAKE_SOURCE_DIR = /home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/src
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/build
+CMAKE_BINARY_DIR = /home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/build
 
 # Utility rule file for download_extra_data.
 
@@ -67,6 +67,6 @@ CMakeFiles/download_extra_data.dir/clean:
 .PHONY : CMakeFiles/download_extra_data.dir/clean
 
 CMakeFiles/download_extra_data.dir/depend:
-	cd /home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/src /home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/src /home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/build /home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/build /home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/build/CMakeFiles/download_extra_data.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/src /home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/src /home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/build /home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/build /home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/build/CMakeFiles/download_extra_data.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/download_extra_data.dir/depend
 

@@ -7,8 +7,7 @@
 # new environment variables
 
 # modified environment variables
-export CMAKE_PREFIX_PATH="/home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/devel:$CMAKE_PREFIX_PATH"
-export LD_LIBRARY_PATH="/home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/devel/lib:$LD_LIBRARY_PATH"
-export PWD='/home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/build'
-export ROSLISP_PACKAGE_DIRECTORIES='/home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/devel/share/common-lisp'
-export ROS_PACKAGE_PATH="/home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/src:$ROS_PACKAGE_PATH"
+export CMAKE_PREFIX_PATH="/home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/devel:$CMAKE_PREFIX_PATH"
+export PWD='/home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/build'
+export ROSLISP_PACKAGE_DIRECTORIES="/home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/devel/share/common-lisp:$ROSLISP_PACKAGE_DIRECTORIES"
+export ROS_PACKAGE_PATH="/home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/src:$ROS_PACKAGE_PATH"

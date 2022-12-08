@@ -67,14 +67,14 @@ set(parking_CONFIG_INCLUDED TRUE)
 
 # set variables for source/devel/install prefixes
 if("FALSE" STREQUAL "TRUE")
-  set(parking_SOURCE_PREFIX /home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/src/parking)
-  set(parking_DEVEL_PREFIX /home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/devel)
+  set(parking_SOURCE_PREFIX /home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/src/parking)
+  set(parking_DEVEL_PREFIX /home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/devel)
   set(parking_INSTALL_PREFIX "")
   set(parking_PREFIX ${parking_DEVEL_PREFIX})
 else()
   set(parking_SOURCE_PREFIX "")
   set(parking_DEVEL_PREFIX "")
-  set(parking_INSTALL_PREFIX /home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/install)
+  set(parking_INSTALL_PREFIX /home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/install)
   set(parking_PREFIX ${parking_INSTALL_PREFIX})
 endif()
 
@@ -154,7 +154,7 @@ foreach(library ${libraries})
     set(lib_path "")
     set(lib "${library}-NOTFOUND")
     # since the path where the library is found is returned we have to iterate over the paths manually
-    foreach(path /home/cc/ee106a/fa22/class/ee106a-ahb/ros_workspaces/final/install/lib;/opt/ros/noetic/lib)
+    foreach(path /home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/106AFinalProject/install/lib;/home/cc/ee106a/fa22/class/ee106a-agd/ros_workspaces/lab4/devel/lib;/opt/ros/noetic/lib)
       find_library(lib ${library}
         PATHS ${path}
         NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
