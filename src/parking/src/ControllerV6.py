@@ -16,14 +16,14 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import Pose
 from std_msgs.msg import ColorRGBA
 
-MARKER_ID_DETECTION = 9
+MARKER_ID_DETECTION = 16
 
 class ParkingController(object):
 	def __init__(self):
 		self._tf_buffer = tf2_ros.Buffer()
 		self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
+
 		self._my_dict = {}
-		self._my_image = {}
 		self._position = 0
 		self._last_x = 0
 		self._last_y = 0
@@ -42,7 +42,7 @@ class ParkingController(object):
 		self.valid_spot = False
 		self._parking = False
 
-		self._state = 0
+		self._state = 1
 
 		self.K = 0.4
 
@@ -61,10 +61,9 @@ class ParkingController(object):
 		return True
 
 	def RegisterCallbacks(self):
-		self.occuGridListener = rospy.Subscriber("/vis/map", Marker, self.callback)
-		self.sub_odom_robot = rospy.Subscriber('/odom', Odometry, self.cbGetRobotOdom, queue_size = 1)
+		#self.occuGridListener = rospy.Subscriber("/vis/map", Marker, self.callback)
+		#self.sub_odom_robot = rospy.Subscriber('/odom', Odometry, self.cbGetRobotOdom, queue_size = 1)
 		self.sub_info_marker = rospy.Subscriber('/ar_pose_marker', AlvarMarkers, self.cbGetMarkerOdom, queue_size = 1)
-		self.imageListener = rospy.Subscriber("/camera/image/compressed", CompressedImage, self.imagecallback)
 		self.laserListener = rospy.Subscriber("/scan", LaserScan, self.processScan)
 		return True
 
@@ -99,11 +98,6 @@ class ParkingController(object):
 		self._front_dist = scan.ranges[0]
 		self._right_dist = scan.ranges[right_idx]
 		self._back_dist = scan.ranges[back_idx]
-
-	def imagecallback(self, data):
-		#self._my_image = threshold_segment_naiva(data.data, 70, 200)
-		self._my_image = data.data
-		#print(sum(self._my_image)/len(self._my_image))
 
 	def getVelDir(self):
 		pose = self._tf_buffer.lookup_transform("odom", "base_link", rospy.Time())
@@ -186,21 +180,14 @@ class ParkingController(object):
 
 		startcount = 0
 		checkcounter = 0
-
-		# startup = True
-		# rotating = False
-		# rightrotating = False
-		# leftrotating = False
-		# signcheck = False
-
-		# parking = False
-		# foundspot = False
-		# parkingcount = 0
+		checkCD = 0
 		
 		checkspot = False
 		checkingcount = 0
 		checkingsum = 0
 		deadend_count = 0
+
+		parkingCounter = 0
 
 		# taggedspot = False
 		
@@ -220,14 +207,14 @@ class ParkingController(object):
 				if self._state == 0: #initializing 
 					control_command.linear.x = .03
 					startcount += 1
-					if (startcount == 30):
+					if (startcount == 10):
 						# startup = False
 						print("startup done")
 						self._state = 1
 
 				elif self._state == 1: #forward patrolling
-					control_command.linear.x = 0.07
-					if checkspot or deadend_count > 10:
+					control_command.linear.x = 0.08
+					if deadend_count > 10:
 						control_command.linear.x = 0.03
 
 					sensor_x = pose.transform.translation.x
@@ -235,29 +222,72 @@ class ParkingController(object):
 					xcoor = int(sensor_x * (101/20))
 					ycoor = int(sensor_y * (101/20))
 
+					if (self._front_dist < 0.35):
+						print("obstacle detected for " + str(deadend_count) + " iterations")
+						deadend_count += 1
+					#else:
+						#deadend_count -= 1
+					if(deadend_count >= 35):
+						print("deadend found, turning around")
+						start_yaw = yaw
+						yaw_offset = 0
+						deadend_count = 0
+						self._state = 2
+
+					checkCD -= 1
+
+					self._last_x = sensor_x
+					self._last_y = sensor_y
+
+					if self._right_dist > 0.4 and checkCD < 0:
+						self._state = 8
+						checkingcount = 0
+						checkingsum = 0
+
+				elif self._state == 8: #gap on right, checking to verify
+					control_command.linear.x = 0.03
+					checkingsum += 1
+					print("checking right")
+					print(checkingsum)
+
+					if self._right_dist > 0.4:
+						checkingcount += 1
+
+					if checkingcount > 35:
+						print("found spot!")
+						start_yaw = yaw
+						yaw_offset = 0
+						#checkspot = False
+						self._state = 3
+						checkCD = 20
+
+					elif checkingsum > 40:
+						print("no spot!")
+						self._state = 1
+						checkCD = 20
 
 
 					#gap on right, checking to verify
-					if  (self.checkRightNotOccupied(xcoor, ycoor)) or  (checkingcount > 80):
-						checkspot = True
-						if (checkingcount < 80):
-							checkingsum += float(self.checkRightNotOccupied(xcoor, ycoor))
-							checkingcount += 1
-						else:
-							if (checkingsum > 35):
-								print("found spot!")
-								checkingsum = 0
-								checkingcount = 0
-								start_yaw = yaw
-								yaw_offset = 0
-								checkspot = False
-								self._state = 3
-								#foundspot = True
-							else: 
-								print("no spot!")
-								checkingsum = 0
-								checkingcount = 0
-								checkspot = False
+					# if  (self.checkRightNotOccupied(xcoor, ycoor)) or  (checkingcount > 80):
+					# 	checkspot = True
+					# 	if (checkingcount < 80):
+					# 		checkingsum += float(self.checkRightNotOccupied(xcoor, ycoor))
+					# 		checkingcount += 1
+					# 	else:
+					# 		if (checkingsum > 35):
+					# 			print("found spot!")
+					# 			checkingsum = 0
+					# 			checkingcount = 0
+					# 			start_yaw = yaw
+					# 			yaw_offset = 0
+					# 			checkspot = False
+					# 			self._state = 3
+					# 			#foundspot = True
+					# 		else: 
+					# 			print("no spot!")
+					# 			checkingsum = 0
+					# 			checkingcount = 0
+					# 			checkspot = False
 
 					#self.checkOccupied(xcoor, ycoor) or 
 					#obstacle in front => rotate 180
@@ -266,18 +296,6 @@ class ParkingController(object):
 					#	start_yaw = yaw
 					#	yaw_offset = 0
 					#	self._state = 2
-
-					if (self._front_dist < 0.35):
-						print("obstacle detected for " + str(deadend_count) + " iterations")
-						deadend_count += 1
-					#else:
-						#deadend_count -= 1
-					if(deadend_count >= 40):
-						print("deadend found, turning around")
-						start_yaw = yaw
-						yaw_offset = 0
-						deadend_count = 0
-						self._state = 2
 
 					self._last_x = sensor_x
 					self._last_y = sensor_y
@@ -299,15 +317,15 @@ class ParkingController(object):
 						self._state = 1
 
 				elif self._state == 3: #right turn
-					if start_yaw < -0.5* math.pi:
+					if start_yaw < -0.5* math.pi and yaw > -0.5*math.pi:
 						start_yaw += 2*math.pi
-						yaw_offset = 2*math.pi
+						#yaw_offset = math.pi
 						#yaw += 2*math.pi
-					error = abs(abs((start_yaw - (yaw + yaw_offset)))- 0.5*math.pi)
+					error = abs(abs((start_yaw - (yaw)))- 0.5*math.pi)
 					if error > 0.05:
 						if (rospy.is_shutdown()):
 							break
-						#print("rightyaw " + str(yaw)+ " " + str(error))
+						print("curryaw: " + str(yaw + yaw_offset)+ " error: " + str(error) + "startyaw: " + str(start_yaw))
 
 						control_command.angular.z = self.K * -error
 					else:
@@ -316,11 +334,11 @@ class ParkingController(object):
 						checkcounter = 0
 
 				elif self._state == 4: #left turn
-					if start_yaw > 0.5* math.pi:
+					if start_yaw > 0.5* math.pi and yaw < 0.5*math.pi:
 						start_yaw -= 2*math.pi
-						yaw_offset = -2*math.pi
+						#yaw_offset = -math.pi
 						#yaw -= 2*math.pi
-					error = abs(abs((start_yaw - (yaw + yaw_offset))) - 0.5*math.pi)
+					error = abs(abs((start_yaw - (yaw))) - 0.5*math.pi)
 					if error > 0.05:
 						if (rospy.is_shutdown()):
 							break
@@ -330,8 +348,10 @@ class ParkingController(object):
 
 					else:
 						if self._parking:
-							self._state = 7
-							print("PARKING DONE")
+							# self._state = 7
+							# print("PARKING DONE")
+							self._state = 9
+							print("starting parking")
 						else:
 							self._state = 1
 
@@ -339,19 +359,20 @@ class ParkingController(object):
 					print("checking sign")
 					if self.valid_spot:
 						print("valid spot!")
-						self._state = 6
-						self.initial_robot_pose_x = self._robot_x
-						self.initial_robot_pose_y = self._robot_y
-						self._parking_dist = self.calcDist(self.initial_robot_pose_x, self.initial_robot_pose_y, self._marker_x, self._marker_y)
+						# self._state = 6
+						# self.initial_robot_pose_x = self._robot_x
+						# self.initial_robot_pose_y = self._robot_y
+						# self._parking_dist = self.calcDist(self.initial_robot_pose_x, self.initial_robot_pose_y, self._marker_x, self._marker_y)
 						self._parking = True
+						self._state = 4
+						start_yaw = yaw
+						yaw_offset = 0
 						#taggedspot = True
 					elif checkcounter == 10:
 						print("no sign")
 						self._state = 4
-						#leftrotating = True
 						start_yaw = yaw
 						yaw_offset = 0
-						#foundspot = False
 
 					else: 
 						checkcounter += 1
@@ -379,7 +400,6 @@ class ParkingController(object):
 					else:
 						print("got into spot")
 						self._state = 4
-						#leftrotating = True
 						start_yaw = yaw
 						yaw_offset = 0
 
@@ -396,7 +416,7 @@ class ParkingController(object):
 					# 	leftrotating = True
 
 				elif self._state == 7: #back up
-					if (self._back_dist >= 0.2):
+					if (self._back_dist >= 0.25):
 						print("backing up")
 						control_command.linear.x = -0.03
 					else:
@@ -405,163 +425,30 @@ class ParkingController(object):
 						break
 
 
+				elif self._state == 9: #parallel parking procedure
 
-				# elif signcheck:
-				# 	print("checking sign")
-				# 	if self.valid_spot:
-				# 		parking = True
-				# 		taggedspot = True
+					if parkingCounter < 70:
+						print("pulling up to front car")
+						control_command.linear.x = 0.03
 
-				# 	else: 
-				# 		print("no sign")
-				# 		leftrotating = True
-				# 		start_yaw = yaw
-				# 		foundspot = False
+					elif parkingCounter < 100:
+						print("backing to the right")
+						control_command.linear.x = -0.03
+						control_command.angular.z = 0.33
 
-				# 	signcheck = False
+					elif parkingCounter < 160:
+						print("backing straight")
+						control_command.linear.x = -0.03
 
-				# elif parking == True:
-				# 	print("robotx: " + str(self._robot_x) + " roboty: " + str(self._robot_y) + " markerx: " + str(self._marker_x) + " markery: " + str(self._marker_y))
-				# 	marker_pose = self._tf_buffer.lookup_transform("odom", "ar_marker_9", rospy.Time())
-				# 	error = self.calcDist(pose.transform.translation.x, pose.transform.translation.y, marker_pose.transform.translation.x, marker_pose.transform.translation.y)
-				# 	print(error)
-				# 	if error > 1:
-				# 		print("parking")
-				# 		control_command.linear.x = .03
+					elif parkingCounter < 190:
+						print("backing to the left")
+						control_command.linear.x = -0.03
+						control_command.angular.z = -0.33
 
-				# 	else:
-				# 		print("got into spot")
-				# 		parking = False
-				# 		leftrotating = True
-				# 		start_yaw = yaw
+					else:
+						self._state = 7
 
-				# elif rotating:
-				# 	if start_yaw > 0:
-				# 		start_yaw -= 2*math.pi
-				# 		yaw -= 2*math.pi
-				# 	error = abs(abs((start_yaw - yaw)) - math.pi)
-				# 	if error > 0.05:
-				# 		if (rospy.is_shutdown()):
-				# 			break
-				# 		print("180yaw " + str(yaw) + " " + str(error))
-
-				# 		control_command.angular.z = self.K * error
-
-				# 	else:
-				# 		rotating = False
-
-				# elif rightrotating:
-				# 	if start_yaw < -0.5* math.pi:
-				# 		start_yaw += 2*math.pi
-				# 		yaw += 2*math.pi
-				# 	error = abs(abs((start_yaw - yaw))- 0.5*math.pi)
-				# 	if error > 0.05:
-				# 		if (rospy.is_shutdown()):
-				# 			break
-				# 		print("rightyaw " + str(yaw)+ " " + str(error))
-
-				# 		control_command.angular.z = self.K * -error
-
-				# 	else:
-				# 		rightrotating = False
-				# 		signcheck = True
-
-				# elif leftrotating:
-				# 	if start_yaw > 0.5* math.pi:
-				# 		start_yaw -= 2*math.pi
-				# 		yaw -= 2*math.pi
-				# 	error = abs(abs((start_yaw - yaw)) - 0.5*math.pi)
-				# 	if error > 0.05:
-				# 		if (rospy.is_shutdown()):
-				# 			break
-				# 		print("leftyaw " + str(yaw)+ " " + str(error))
-
-				# 		control_command.angular.z = self.K * error
-
-				# 	else:
-				# 		leftrotating = False
-				# 		if (taggedspot == True):
-				# 			print("PARKING DONE")
-				# 			break
-
-				# else: 
-
-				# 	# if (taggedspot == False) & (foundspot == True):
-				# 	# 	print("invalid spot")
-				# 	# 	print("continuing search")
-				# 	# 	foundspot = False
-				# 	# 	start_yaw = yaw
-				# 	# 	leftrotating = True
-
-				# 	if (checkspot == True):
-				# 		control_command.linear.x = .026
-				# 	elif (foundspot == False):
-				# 		control_command.linear.x = .07
-				# 	elif (parking == True) or (taggedspot == False): 
-				# 		control_command.linear.x = 0.0
-				# 	elif (taggedspot == True):
-				# 		control_command.linear.x = .03
-				# 		parkingcount += 1
-					
-				# 	print("moving")	
-				# 	#print(position.position.x, position.position.y, position.position.z)
-				# 	sensor_x = pose.transform.translation.x
-				# 	sensor_y = pose.transform.translation.y
-				# 	xcoor = int(sensor_x * (101/20))
-				# 	ycoor = int(sensor_y * (101/20))
-
-				# 	#print(checkingcount)
-				# 	if (checkingcount == 78):
-				# 		print("checking spot")
-				# 		print(checkingsum)
-
-				# 	#detect gap on right
-				# 	if  ((self.checkRightNotOccupied(xcoor, ycoor)) and (foundspot == False)) or  (checkingcount == 80):
-				# 		checkspot = True
-				# 		if (checkingcount < 80):
-				# 			checkingsum += float(self.checkRightNotOccupied(xcoor, ycoor))
-				# 			checkingcount += 1
-				# 		else:
-				# 			if (checkingsum > 20):
-				# 				print("found spot!")
-				# 				checkingsum = 0
-				# 				checkingcount = 0
-				# 				start_yaw = yaw
-				# 				checkspot = False
-				# 				rightrotating = True
-				# 				foundspot = True
-				# 			else: 
-				# 				print("no spot!")
-				# 				checkingsum = 0
-				# 				checkingcount = 0
-				# 				checkspot = False
-				# 	elif (foundspot == False):
-				# 		if (checkingcount < 80):
-				# 			checkingsum += float(self.checkRightNotOccupied(xcoor, ycoor))
-				# 			checkingcount += 1
-				# 		else:
-				# 			checkingsum = 0
-				# 			checkingcount = 0 
-				# 			print("no spot!")
-
-					
-				# 	#obstacle in front, no spot found => rotate 180
-				# 	if (self.checkOccupied(xcoor, ycoor) or self.checkFrontOccupied(xcoor, ycoor)) and (foundspot == False):
-				# 		print("DETECTED")
-				# 		start_yaw = yaw
-
-				# 		rotating = True
-
-				# 	elif ((self.checkOccupied(xcoor, ycoor) or self.checkFrontOccupied(xcoor, ycoor)) or parkingcount==140) and (foundspot == True) and (taggedspot == True):
-				# 		print("PARKING")
-				# 		control_command.linear.x = .0
-				# 		parkingcount = 0
-				# 		start_yaw = yaw
-				# 		parking = True
-				# 		leftrotating = True
-
-				# 	self._last_x = xcoor
-				# 	self._last_y = ycoor
+					parkingCounter += 1
 	
 				pub.publish(control_command)	
 				

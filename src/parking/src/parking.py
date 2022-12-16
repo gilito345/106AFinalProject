@@ -5,7 +5,7 @@
 #
 ################################################################################
 
-from ControllerV5 import ParkingController
+from ControllerV6 import ParkingController
 
 import rospy
 import sys
